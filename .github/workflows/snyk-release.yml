@@ -1,0 +1,178 @@
+name: Snyk Release Security & SBOM
+
+on:
+  pull_request:
+    branches:
+      - main
+    types:
+      - opened
+      - synchronize
+      - reopened
+
+permissions:
+  contents: read
+  pull-requests: write
+
+env:
+  SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+
+jobs:
+  snyk-release-security:
+    name: Snyk Release Security & SBOM
+    runs-on: ubuntu-latest
+
+    steps:
+      # ---------------------------------------------------------
+      # 1. Checkout del código que se pretende introducir en main
+      # ---------------------------------------------------------
+      - name: Checkout PR
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # ---------------------------------------------------------
+      # 2. Java / Maven
+      # ---------------------------------------------------------
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+
+      # ---------------------------------------------------------
+      # 3. Instalar Snyk CLI
+      # ---------------------------------------------------------
+      - name: Install Snyk CLI
+        run: |
+          npm install -g snyk
+          snyk --version
+
+      # ---------------------------------------------------------
+      # 4. Autenticar Snyk
+      # ---------------------------------------------------------
+      - name: Authenticate Snyk
+        run: |
+          snyk auth "$SNYK_TOKEN"
+
+      # ---------------------------------------------------------
+      # 5. SCA - Maven
+      # ---------------------------------------------------------
+      - name: Snyk Open Source
+        id: snyk_oss
+        continue-on-error: true
+        run: |
+          snyk test \
+            --file=pom.xml \
+            --json-file-output=snyk-open-source.json
+
+      # ---------------------------------------------------------
+      # 6. Snyk Code
+      # ---------------------------------------------------------
+      - name: Snyk Code
+        id: snyk_code
+        continue-on-error: true
+        run: |
+          snyk code test \
+            --json-file-output=snyk-code.json
+
+      # ---------------------------------------------------------
+      # 7. Snyk Secrets
+      # ---------------------------------------------------------
+      - name: Snyk Secrets
+        id: snyk_secrets
+        continue-on-error: true
+        run: |
+          snyk secrets test \
+            --json-file-output=snyk-secrets.json
+
+      # ---------------------------------------------------------
+      # 8. Snyk IaC
+      # ---------------------------------------------------------
+      - name: Snyk IaC
+        id: snyk_iac
+        continue-on-error: true
+        run: |
+          snyk iac test deploy/k8s \
+            --json-file-output=snyk-iac.json
+
+      # ---------------------------------------------------------
+      # 9. Generar SBOM CycloneDX
+      # ---------------------------------------------------------
+      - name: Generate SBOM
+        run: |
+          snyk sbom \
+            --file=pom.xml \
+            --format=cyclonedx1.6+json \
+            --json-file-output=sbom.cdx.json
+
+      # ---------------------------------------------------------
+      # 10. Crear resumen de seguridad
+      # ---------------------------------------------------------
+      - name: Generate Security Summary
+        if: always()
+        run: |
+          echo "# Snyk Release Security Gate" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+
+          echo "## Scan results" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+
+          echo "| Scan | Result |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|---|---|" >> "$GITHUB_STEP_SUMMARY"
+
+          if [ "${{ steps.snyk_oss.outcome }}" = "success" ]; then
+            echo "| Open Source | ✅ Passed |" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "| Open Source | ⚠️ Findings |" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+          if [ "${{ steps.snyk_code.outcome }}" = "success" ]; then
+            echo "| Code | ✅ Passed |" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "| Code | ⚠️ Findings |" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+          if [ "${{ steps.snyk_secrets.outcome }}" = "success" ]; then
+            echo "| Secrets | ✅ Passed |" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "| Secrets | ⚠️ Findings |" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+          if [ "${{ steps.snyk_iac.outcome }}" = "success" ]; then
+            echo "| IaC | ✅ Passed |" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "| IaC | ⚠️ Findings |" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "## SBOM" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "SBOM generated in CycloneDX 1.6 JSON format." >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "**Artifact:** \`sbom.cdx.json\`" >> "$GITHUB_STEP_SUMMARY"
+
+      # ---------------------------------------------------------
+      # 11. Publicar resultados como artifacts
+      # ---------------------------------------------------------
+      - name: Upload Snyk Reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: snyk-release-security-reports
+          path: |
+            snyk-open-source.json
+            snyk-code.json
+            snyk-secrets.json
+            snyk-iac.json
+          if-no-files-found: ignore
+          retention-days: 30
+
+      - name: Upload SBOM
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom-cyclonedx
+          path: sbom.cdx.json
+          if-no-files-found: error
+          retention-days: 30
