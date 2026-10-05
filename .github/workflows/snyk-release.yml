@@ -303,12 +303,12 @@ jobs:
               output.write(f"total_new={total_new}\n")
 
           PY
-
       # =========================================================
-      # 19. Crear Job Summary
+      # 19. Crear GitHub Job Summary
       # =========================================================
       - name: Generate GitHub Summary
         if: always()
+        shell: bash
         run: |
 
           python3 <<'PY'
@@ -327,11 +327,10 @@ jobs:
               f.write("# Snyk Release Security Gate\n\n")
 
               f.write(
-                  "PR: "
+                  "**Pull Request:** "
                   "${{ github.event.pull_request.head.ref }}"
                   " → "
-                  "${{ github.event.pull_request.base.ref }}"
-                  "\n\n"
+                  "${{ github.event.pull_request.base.ref }}\n\n"
               )
 
               f.write("## Security comparison\n\n")
@@ -392,13 +391,22 @@ jobs:
                       "were detected compared with the baseline "
                       "of `main`.\n"
                   )
+          PY
 
+          # El siguiente comando es Bash, fuera del bloque Python
           cat summary.md >> "$GITHUB_STEP_SUMMARY"
 
       # =========================================================
       # 20. Publicar comentario en el PR
       # =========================================================
       - name: Comment PR with security result
+        if: always() && hashFiles('summary.md') != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh pr comment \
+            "${{ github.event.pull_request.number }}" \
+            --body-file summary.md
         if: always()
         env:
           GH_TOKEN: ${{ github.token }}
