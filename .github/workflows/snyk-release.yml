@@ -15,6 +15,7 @@ permissions:
 
 env:
   SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+  SNYK_ORG: jfernandez-organization
 
 jobs:
   snyk-release-security:
@@ -91,6 +92,7 @@ jobs:
         run: |
           snyk test \
             --file=pom.xml \
+            --org="$SNYK_ORG" \
             --json-file-output=reports/baseline/open-source.json
 
       # =========================================================
@@ -100,6 +102,7 @@ jobs:
         continue-on-error: true
         run: |
           snyk code test \
+            --org="$SNYK_ORG" \
             --json-file-output=reports/baseline/code.json
 
       # =========================================================
@@ -109,6 +112,7 @@ jobs:
         continue-on-error: true
         run: |
           snyk secrets test \
+            --org="$SNYK_ORG" \
             --json-file-output=reports/baseline/secrets.json
 
       # =========================================================
@@ -118,6 +122,7 @@ jobs:
         continue-on-error: true
         run: |
           snyk iac test deploy/k8s \
+            --org="$SNYK_ORG" \
             --json-file-output=reports/baseline/iac.json
 
       # =========================================================
@@ -135,6 +140,7 @@ jobs:
         run: |
           snyk test \
             --file=pom.xml \
+            --org="$SNYK_ORG" \
             --json-file-output=reports/pr/open-source.json
 
       # =========================================================
@@ -144,6 +150,7 @@ jobs:
         continue-on-error: true
         run: |
           snyk code test \
+            --org="$SNYK_ORG" \
             --json-file-output=reports/pr/code.json
 
       # =========================================================
@@ -153,6 +160,7 @@ jobs:
         continue-on-error: true
         run: |
           snyk secrets test \
+            --org="$SNYK_ORG" \
             --json-file-output=reports/pr/secrets.json
 
       # =========================================================
@@ -162,6 +170,7 @@ jobs:
         continue-on-error: true
         run: |
           snyk iac test deploy/k8s \
+            --org="$SNYK_ORG" \
             --json-file-output=reports/pr/iac.json
 
       # =========================================================
