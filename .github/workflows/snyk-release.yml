@@ -303,14 +303,14 @@ jobs:
               output.write(f"total_new={total_new}\n")
 
           PY
+
       # =========================================================
-      # 19. Crear GitHub Job Summary
+      # 19. Crear Job Summary
       # =========================================================
       - name: Generate GitHub Summary
         if: always()
         shell: bash
         run: |
-
           python3 <<'PY'
           import json
 
@@ -323,7 +323,6 @@ jobs:
           )
 
           with open("summary.md", "w") as f:
-
               f.write("# Snyk Release Security Gate\n\n")
 
               f.write(
@@ -334,17 +333,10 @@ jobs:
               )
 
               f.write("## Security comparison\n\n")
-
-              f.write(
-                  "| Control | Baseline | Current | New | Result |\n"
-              )
-
-              f.write(
-                  "|---|---:|---:|---:|---|\n"
-              )
+              f.write("| Control | Baseline | Current | New | Result |\n")
+              f.write("|---|---:|---:|---:|---|\n")
 
               for category, value in results.items():
-
                   result = "❌" if value["new"] > 0 else "✅"
 
                   f.write(
@@ -356,36 +348,19 @@ jobs:
                   )
 
               f.write("\n")
-
               f.write("## SBOM\n\n")
-
-              f.write(
-                  "✅ CycloneDX 1.6 SBOM generated.\n\n"
-              )
-
-              f.write(
-                  "Artifact: `sbom-cyclonedx`\n\n"
-              )
-
+              f.write("✅ CycloneDX 1.6 SBOM generated.\n\n")
+              f.write("Artifact: `sbom-cyclonedx`\n\n")
               f.write("---\n\n")
 
               if total_new == 0:
-
-                  f.write(
-                      "## ✅ RELEASE APPROVED\n\n"
-                  )
-
+                  f.write("## ✅ RELEASE APPROVED\n\n")
                   f.write(
                       "No new Snyk findings were detected "
                       "compared with the baseline of `main`.\n"
                   )
-
               else:
-
-                  f.write(
-                      "## ❌ RELEASE BLOCKED\n\n"
-                  )
-
+                  f.write("## ❌ RELEASE BLOCKED\n\n")
                   f.write(
                       f"**{total_new} new Snyk finding(s)** "
                       "were detected compared with the baseline "
@@ -393,20 +368,12 @@ jobs:
                   )
           PY
 
-          # El siguiente comando es Bash, fuera del bloque Python
           cat summary.md >> "$GITHUB_STEP_SUMMARY"
 
       # =========================================================
       # 20. Publicar comentario en el PR
       # =========================================================
       - name: Comment PR with security result
-        if: always() && hashFiles('summary.md') != ''
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          gh pr comment \
-            "${{ github.event.pull_request.number }}" \
-            --body-file summary.md
         if: always()
         env:
           GH_TOKEN: ${{ github.token }}
