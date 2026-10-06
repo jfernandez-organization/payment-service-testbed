@@ -18,4 +18,17 @@ public class YamlController {
         Object parsed = yaml.load(body);
         return ResponseEntity.ok("loaded:" + (parsed == null ? "null" : parsed.getClass().getName()));
     }
+
+    @PostMapping(value = "/xss", consumes = "application/x-www-form-urlencoded")
+    public ResponseEntity<String> xss(@RequestBody String input) {
+    String html = "<html><body>"
+            + "<h1>Payment Configuration</h1>"
+            + "<p>Configuration: " + input + "</p>"
+            + "</body></html>";
+
+    return ResponseEntity.ok()
+            .header("Content-Type", "text/html")
+            .body(html);
+}
+
 }
