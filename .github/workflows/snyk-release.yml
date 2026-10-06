@@ -336,8 +336,8 @@ jobs:
 
           for category, (baseline_file, pr_file) in categories.items():
 
-              baseline = extract_ids(load(baseline_file))
-              current = extract_ids(load(pr_file))
+              baseline = extract_ids(load(baseline_file),category)
+              current = extract_ids(load(pr_file),category
 
               new_findings = current - baseline
 
