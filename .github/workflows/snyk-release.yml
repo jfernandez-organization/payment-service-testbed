@@ -397,6 +397,7 @@ jobs:
           )
 
           with open("summary.md", "w") as f:
+
               f.write("# Snyk Release Security Gate\n\n")
 
               f.write(
@@ -411,6 +412,7 @@ jobs:
               f.write("|---|---:|---:|---:|---|\n")
 
               for category, value in results.items():
+
                   result = "❌" if value["new"] > 0 else "✅"
 
                   f.write(
@@ -422,19 +424,39 @@ jobs:
                   )
 
               f.write("\n")
-              f.write("## SBOM\n\n")
-              f.write("✅ CycloneDX 1.6 SBOM generated.\n\n")
-              f.write("Artifact: `sbom-cyclonedx`\n\n")
+
+              f.write("## Security artifacts\n\n")
+
+              f.write(
+                  "📦 **SBOM:** "
+                  "CycloneDX 1.6\n\n"
+              )
+
+              f.write(
+                  "📊 **Snyk Reports:** "
+                  "Baseline vs PR scan reports\n\n"
+              )
+
+              f.write(
+                  "_Links to the downloadable artifacts "
+                  "are provided below._\n\n"
+              )
+
               f.write("---\n\n")
 
               if total_new == 0:
+
                   f.write("## ✅ RELEASE APPROVED\n\n")
+
                   f.write(
                       "No new Snyk findings were detected "
                       "compared with the baseline of `main`.\n"
                   )
+
               else:
+
                   f.write("## ❌ RELEASE BLOCKED\n\n")
+
                   f.write(
                       f"**{total_new} new Snyk finding(s)** "
                       "were detected compared with the baseline "
@@ -444,23 +466,12 @@ jobs:
 
           cat summary.md >> "$GITHUB_STEP_SUMMARY"
 
-      # =========================================================
-      # 20. Publicar comentario en el PR
-      # =========================================================
-      - name: Comment PR with security result
-        if: always()
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-
-          gh pr comment \
-            "${{ github.event.pull_request.number }}" \
-            --body-file summary.md
 
       # =========================================================
-      # 21. Publicar reports
+      # 20. Publicar reports
       # =========================================================
       - name: Upload Snyk reports
+        id: reports
         if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -471,10 +482,12 @@ jobs:
           if-no-files-found: ignore
           retention-days: 30
 
+
       # =========================================================
-      # 22. Publicar SBOM
+      # 21. Publicar SBOM
       # =========================================================
       - name: Upload SBOM
+        id: sbom
         if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -482,6 +495,68 @@ jobs:
           path: sbom.cdx.json
           if-no-files-found: error
           retention-days: 30
+
+
+      # =========================================================
+      # 22. Publicar comentario en el PR
+      # =========================================================
+      - name: Comment PR with security result
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SBOM_URL: ${{ steps.sbom.outputs.artifact-url }}
+          REPORTS_URL: ${{ steps.reports.outputs.artifact-url }}
+        run: |
+
+          python3 <<'PY'
+          import os
+
+          summary_file = "summary.md"
+
+          with open(summary_file, "r") as f:
+              summary = f.read()
+
+          sbom_url = os.environ.get("SBOM_URL", "")
+          reports_url = os.environ.get("REPORTS_URL", "")
+
+          artifacts = "\n## Security artifacts\n\n"
+
+          if sbom_url:
+              artifacts += (
+                  f"📦 **[Download SBOM (CycloneDX 1.6)]"
+                  f"({sbom_url})**\n\n"
+              )
+          else:
+              artifacts += (
+                  "📦 **SBOM:** Artifact URL unavailable\n\n"
+              )
+
+          if reports_url:
+              artifacts += (
+                  f"📊 **[View Snyk Security Reports]"
+                  f"({reports_url})**\n\n"
+              )
+          else:
+              artifacts += (
+                  "📊 **Snyk Reports:** Artifact URL unavailable\n\n"
+              )
+
+          summary = summary.replace(
+              "## Security artifacts\n\n"
+              "📦 **SBOM:** CycloneDX 1.6\n\n"
+              "📊 **Snyk Reports:** Baseline vs PR scan reports\n\n"
+              "_Links to the downloadable artifacts are provided below._\n\n",
+              artifacts
+          )
+
+          with open(summary_file, "w") as f:
+              f.write(summary)
+          PY
+
+          gh pr comment \
+            "${{ github.event.pull_request.number }}" \
+            --body-file summary.md
+
 
       # =========================================================
       # 23. Security Gate
