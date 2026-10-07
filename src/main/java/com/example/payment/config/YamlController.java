@@ -31,6 +31,20 @@ public class YamlController {
     return ResponseEntity.ok()
             .header("Content-Type", "text/html")
             .body(html);
-}
+    }
+
+    @PostMapping(value = "/xss2", consumes = "application/x-www-form-urlencoded")
+    public ResponseEntity<String> xss2(@RequestBody String input) {
+    String safeInput = StringEscapeUtils.escapeHtml4(input);
+    String html = "<html><body>"
+            + "<h1>Payment Configuration</h1>"
+            + "<p>Configuration: " + safeInput + "</p>"
+            + "</body></html>";
+
+    return ResponseEntity.ok()
+            .header("Content-Type", "text/html")
+            .body(html);
+    }   
+
 
 }
