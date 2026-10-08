@@ -126,6 +126,42 @@ jobs:
             --json-file-output=reports/baseline/iac.json
 
       # =========================================================
+      # CONTAINER baseline
+      # =========================================================
+      - name: Build baseline container image
+        shell: bash
+        run: |
+            docker build \
+            -t payment-service:baseline \
+            -f Dockerfile \
+            .
+
+      - name: Snyk Container scan - BASELINE
+        id: container_baseline
+        shell: bash
+        run: |
+            set +e
+
+            snyk container test \
+            payment-service:baseline \
+            --file=Dockerfile \
+            --json-file-output=reports/baseline/container.json
+
+            SNYK_EXIT=$?
+
+            echo "Snyk Container baseline exit code: $SNYK_EXIT"
+
+            # 0 = sin vulnerabilidades
+            # 1 = vulnerabilidades encontradas
+            # 2/3 = error del scan
+            if [ "$SNYK_EXIT" -ge 2 ]; then
+            echo "❌ Snyk Container baseline scan failed"
+            exit "$SNYK_EXIT"
+            fi
+
+            exit 0  
+
+      # =========================================================
       # 12. Checkout nuevamente del PR
       # =========================================================
       - name: Checkout PR version
@@ -174,6 +210,42 @@ jobs:
             --json-file-output=reports/pr/iac.json
 
       # =========================================================
+      # CONTAINER PR
+      # =========================================================
+      - name: Build pr container image
+        shell: bash
+        run: |
+            docker build \
+            -t payment-service:pr \
+            -f Dockerfile \
+            .
+
+      - name: Snyk Container scan - PR
+        id: container_pr
+        shell: bash
+        run: |
+            set +e
+
+            snyk container test \
+            payment-service:pr \
+            --file=Dockerfile \
+            --json-file-output=reports/pr/container.json
+
+            SNYK_EXIT=$?
+
+            echo "Snyk Container PR exit code: $SNYK_EXIT"
+
+            # 0 = sin vulnerabilidades
+            # 1 = vulnerabilidades encontradas
+            # 2/3 = error del scan
+            if [ "$SNYK_EXIT" -ge 2 ]; then
+            echo "❌ Snyk Container PR scan failed"
+            exit "$SNYK_EXIT"
+            fi
+
+            exit 0  
+    
+      # =========================================================
       # 17. Generar SBOM
       # =========================================================
       - name: Generate SBOM
@@ -211,6 +283,10 @@ jobs:
               "IaC": (
                   "reports/baseline/iac.json",
                   "reports/pr/iac.json"
+              ),
+              "Container": (
+                  "reports/baseline/container.json",
+                  "reports/pr/container.json"
               )
           }
 
