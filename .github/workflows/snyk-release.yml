@@ -430,6 +430,22 @@ jobs:
 
                 return ids
 
+            # =====================================================
+            # Snyk Container
+            # =====================================================
+            if category == "Container":
+
+                for vulnerability in data.get("vulnerabilities", []):
+                    if not isinstance(vulnerability, dict):
+                        continue
+
+                    vulnerability_id = vulnerability.get("id")
+
+                    if vulnerability_id:
+                        ids.add(str(vulnerability_id))
+
+                return ids
+
             return ids
 
           results = {}
