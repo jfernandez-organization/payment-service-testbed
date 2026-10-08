@@ -210,36 +210,36 @@ jobs:
             --json-file-output=reports/pr/iac.json
 
       # =========================================================
-      # CONTAINER baseline
+      # CONTAINER PR
       # =========================================================
-      - name: Build baseline container image
+      - name: Build pr container image
         shell: bash
         run: |
             docker build \
-            -t payment-service:baseline \
+            -t payment-service:pr \
             -f Dockerfile \
             .
 
-      - name: Snyk Container scan - BASELINE
-        id: container_baseline
+      - name: Snyk Container scan - PR
+        id: container_pr
         shell: bash
         run: |
             set +e
 
             snyk container test \
-            payment-service:baseline \
+            payment-service:pr \
             --file=Dockerfile \
             --json-file-output=reports/pr/container.json
 
             SNYK_EXIT=$?
 
-            echo "Snyk Container baseline exit code: $SNYK_EXIT"
+            echo "Snyk Container PR exit code: $SNYK_EXIT"
 
             # 0 = sin vulnerabilidades
             # 1 = vulnerabilidades encontradas
             # 2/3 = error del scan
             if [ "$SNYK_EXIT" -ge 2 ]; then
-            echo "❌ Snyk Container baseline scan failed"
+            echo "❌ Snyk Container PR scan failed"
             exit "$SNYK_EXIT"
             fi
 
