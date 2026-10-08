@@ -562,7 +562,7 @@ jobs:
 
               if total_new == 0:
 
-                  f.write("## RELEASE APPROVED\n\n")
+                  f.write("##  RELEASE APPROVED\n\n")
 
                   f.write(
                       "No new Snyk findings were detected "
@@ -571,7 +571,7 @@ jobs:
 
               else:
 
-                  f.write("## RELEASE BLOCKED\n\n")
+                  f.write("##  RELEASE BLOCKED\n\n")
 
                   f.write(
                       f"**{total_new} new Snyk finding(s)** "
@@ -639,28 +639,28 @@ jobs:
 
           if sbom_url:
               artifacts += (
-                  f"📦 **[Download SBOM (CycloneDX 1.6)]"
+                  f" **[Download SBOM (CycloneDX 1.6)]"
                   f"({sbom_url})**\n\n"
               )
           else:
               artifacts += (
-                  "📦 **SBOM:** Artifact URL unavailable\n\n"
+                  " **SBOM:** Artifact URL unavailable\n\n"
               )
 
           if reports_url:
               artifacts += (
-                  f"📊 **[View Snyk Security Reports]"
+                  f" **[View Snyk Security Reports]"
                   f"({reports_url})**\n\n"
               )
           else:
               artifacts += (
-                  "📊 **Snyk Reports:** Artifact URL unavailable\n\n"
+                  " **Snyk Reports:** Artifact URL unavailable\n\n"
               )
 
           summary = summary.replace(
               "## Security artifacts\n\n"
-              "📦 **SBOM:** CycloneDX 1.6\n\n"
-              "📊 **Snyk Reports:** Baseline vs PR scan reports\n\n"
+              " **SBOM:** CycloneDX 1.6\n\n"
+              " **Snyk Reports:** Baseline vs PR scan reports\n\n"
               "_Links to the downloadable artifacts are provided below._\n\n",
               artifacts
           )
