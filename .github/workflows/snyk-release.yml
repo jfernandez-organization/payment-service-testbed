@@ -36,7 +36,7 @@ jobs:
       # 2. Java / Maven
       # =========================================================
       - name: Setup Java
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '17'
@@ -126,6 +126,53 @@ jobs:
             --json-file-output=reports/baseline/iac.json
 
       # =========================================================
+      # SNYK DOCKERFILE - BASELINE
+      # =========================================================
+
+      - name: Snyk Dockerfile scan - BASELINE
+        id: dockerfile_baseline
+        shell: bash
+        run: |
+            set +e
+
+            IMAGE=$(awk '
+            toupper($1) == "FROM" {
+                print $2
+                exit
+            }
+            ' Dockerfile)
+
+            if [ "$IMAGE" = "openjdk:17" ]; then
+                IMAGE="${IMAGE}-ea-8-oraclelinux8"
+            fi
+
+            echo "Dockerfile base image: $IMAGE"
+
+            if [ -z "$IMAGE" ]; then
+            echo "❌ Could not determine base image from Dockerfile"
+            exit 2
+            fi
+
+            snyk container test "$IMAGE" \
+            --file=Dockerfile \
+            --org="$SNYK_ORG" \
+            --json-file-output=reports/baseline/dockerfile.json
+
+            SNYK_EXIT=$?
+
+            echo "Snyk Dockerfile baseline exit code: $SNYK_EXIT"
+
+            # 0 = sin vulnerabilidades
+            # 1 = vulnerabilidades encontradas
+            # 2/3 = error del análisis
+
+            if [ "$SNYK_EXIT" -ge 2 ]; then
+            exit "$SNYK_EXIT"
+            fi
+
+            exit 0      
+
+      # =========================================================
       # 12. Checkout nuevamente del PR
       # =========================================================
       - name: Checkout PR version
@@ -173,6 +220,55 @@ jobs:
             --org="$SNYK_ORG" \
             --json-file-output=reports/pr/iac.json
 
+
+
+      # =========================================================
+      # SNYK DOCKERFILE - PR
+      # =========================================================
+
+      - name: Snyk Dockerfile scan - PR
+        id: dockerfile_pr
+        shell: bash
+        run: |
+            set +e
+
+            IMAGE=$(awk '
+            toupper($1) == "FROM" {
+                print $2
+                exit
+            }
+            ' Dockerfile)
+
+            if [ "$IMAGE" = "openjdk:17" ]; then
+                IMAGE="${IMAGE}-ea-8-oraclelinux8"
+            fi
+            
+            echo "Dockerfile pr image: $IMAGE"
+
+            if [ -z "$IMAGE" ]; then
+            echo "❌ Could not determine PR image from Dockerfile"
+            exit 2
+            fi
+
+            snyk container test "$IMAGE" \
+            --file=Dockerfile \
+            --org="$SNYK_ORG" \
+            --json-file-output=reports/pr/dockerfile.json
+
+            SNYK_EXIT=$?
+
+            echo "Snyk Dockerfile PR exit code: $SNYK_EXIT"
+
+            # 0 = sin vulnerabilidades
+            # 1 = vulnerabilidades encontradas
+            # 2/3 = error del análisis
+
+            if [ "$SNYK_EXIT" -ge 2 ]; then
+            exit "$SNYK_EXIT"
+            fi
+
+            exit 0      
+    
       # =========================================================
       # 17. Generar SBOM
       # =========================================================
@@ -211,6 +307,10 @@ jobs:
               "IaC": (
                   "reports/baseline/iac.json",
                   "reports/pr/iac.json"
+              ),
+              "Container": (
+                  "reports/baseline/dockerfile.json",
+                  "reports/pr/dockerfile.json"
               )
           }
 
@@ -330,6 +430,22 @@ jobs:
 
                 return ids
 
+            # =====================================================
+            # Snyk Container
+            # =====================================================
+            if category == "Container":
+
+                for vulnerability in data.get("vulnerabilities", []):
+                    if not isinstance(vulnerability, dict):
+                        continue
+
+                    vulnerability_id = vulnerability.get("id")
+
+                    if vulnerability_id:
+                        ids.add(str(vulnerability_id))
+
+                return ids
+
             return ids
 
           results = {}
@@ -428,12 +544,12 @@ jobs:
               f.write("## Security artifacts\n\n")
 
               f.write(
-                  "📦 **SBOM:** "
+                  " **SBOM:** "
                   "CycloneDX 1.6\n\n"
               )
 
               f.write(
-                  "📊 **Snyk Reports:** "
+                  " **Snyk Reports:** "
                   "Baseline vs PR scan reports\n\n"
               )
 
@@ -446,7 +562,7 @@ jobs:
 
               if total_new == 0:
 
-                  f.write("## ✅ RELEASE APPROVED\n\n")
+                  f.write("##  RELEASE APPROVED\n\n")
 
                   f.write(
                       "No new Snyk findings were detected "
@@ -455,7 +571,7 @@ jobs:
 
               else:
 
-                  f.write("## ❌ RELEASE BLOCKED\n\n")
+                  f.write("##  RELEASE BLOCKED\n\n")
 
                   f.write(
                       f"**{total_new} new Snyk finding(s)** "
@@ -523,28 +639,28 @@ jobs:
 
           if sbom_url:
               artifacts += (
-                  f"📦 **[Download SBOM (CycloneDX 1.6)]"
+                  f" **[Download SBOM (CycloneDX 1.6)]"
                   f"({sbom_url})**\n\n"
               )
           else:
               artifacts += (
-                  "📦 **SBOM:** Artifact URL unavailable\n\n"
+                  " **SBOM:** Artifact URL unavailable\n\n"
               )
 
           if reports_url:
               artifacts += (
-                  f"📊 **[View Snyk Security Reports]"
+                  f" **[View Snyk Security Reports]"
                   f"({reports_url})**\n\n"
               )
           else:
               artifacts += (
-                  "📊 **Snyk Reports:** Artifact URL unavailable\n\n"
+                  " **Snyk Reports:** Artifact URL unavailable\n\n"
               )
 
           summary = summary.replace(
               "## Security artifacts\n\n"
-              "📦 **SBOM:** CycloneDX 1.6\n\n"
-              "📊 **Snyk Reports:** Baseline vs PR scan reports\n\n"
+              " **SBOM:** CycloneDX 1.6\n\n"
+              " **Snyk Reports:** Baseline vs PR scan reports\n\n"
               "_Links to the downloadable artifacts are provided below._\n\n",
               artifacts
           )
