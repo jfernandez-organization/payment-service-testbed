@@ -142,6 +142,10 @@ jobs:
             }
             ' Dockerfile)
 
+            if [ "$IMAGE" = "openjdk:17" ]; then
+                IMAGE="${IMAGE}-ea-8-oraclelinux8"
+            fi
+
             echo "Dockerfile base image: $IMAGE"
 
             if [ -z "$IMAGE" ]; then
@@ -235,6 +239,10 @@ jobs:
             }
             ' Dockerfile)
 
+            if [ "$IMAGE" = "openjdk:17" ]; then
+                IMAGE="${IMAGE}-ea-8-oraclelinux8"
+            fi
+            
             echo "Dockerfile pr image: $IMAGE"
 
             if [ -z "$IMAGE" ]; then
