@@ -126,40 +126,47 @@ jobs:
             --json-file-output=reports/baseline/iac.json
 
       # =========================================================
-      # CONTAINER baseline
+      # SNYK DOCKERFILE - BASELINE
       # =========================================================
-      - name: Build baseline container image
-        shell: bash
-        run: |
-            docker build \
-            -t payment-service:baseline \
-            -f Dockerfile \
-            .
 
-      - name: Snyk Container scan - BASELINE
-        id: container_baseline
+      - name: Snyk Dockerfile scan - BASELINE
+        id: dockerfile_baseline
         shell: bash
         run: |
             set +e
 
-            snyk container test \
-            payment-service:baseline \
+            IMAGE=$(awk '
+            toupper($1) == "FROM" {
+                print $2
+                exit
+            }
+            ' Dockerfile)
+
+            echo "Dockerfile base image: $IMAGE"
+
+            if [ -z "$IMAGE" ]; then
+            echo "❌ Could not determine base image from Dockerfile"
+            exit 2
+            fi
+
+            snyk container test "$IMAGE" \
             --file=Dockerfile \
-            --json-file-output=reports/baseline/container.json
+            --org="$SNYK_ORG" \
+            --json-file-output=reports/baseline/dockerfile.json
 
             SNYK_EXIT=$?
 
-            echo "Snyk Container baseline exit code: $SNYK_EXIT"
+            echo "Snyk Dockerfile baseline exit code: $SNYK_EXIT"
 
             # 0 = sin vulnerabilidades
             # 1 = vulnerabilidades encontradas
-            # 2/3 = error del scan
+            # 2/3 = error del análisis
+
             if [ "$SNYK_EXIT" -ge 2 ]; then
-            echo "❌ Snyk Container baseline scan failed"
             exit "$SNYK_EXIT"
             fi
 
-            exit 0  
+            exit 0      
 
       # =========================================================
       # 12. Checkout nuevamente del PR
@@ -209,41 +216,50 @@ jobs:
             --org="$SNYK_ORG" \
             --json-file-output=reports/pr/iac.json
 
-      # =========================================================
-      # CONTAINER PR
-      # =========================================================
-      - name: Build pr container image
-        shell: bash
-        run: |
-            docker build \
-            -t payment-service:pr \
-            -f Dockerfile \
-            .
 
-      - name: Snyk Container scan - PR
-        id: container_pr
+
+      # =========================================================
+      # SNYK DOCKERFILE - PR
+      # =========================================================
+
+      - name: Snyk Dockerfile scan - PR
+        id: dockerfile_pr
         shell: bash
         run: |
             set +e
 
-            snyk container test \
-            payment-service:pr \
+            IMAGE=$(awk '
+            toupper($1) == "FROM" {
+                print $2
+                exit
+            }
+            ' Dockerfile)
+
+            echo "Dockerfile pr image: $IMAGE"
+
+            if [ -z "$IMAGE" ]; then
+            echo "❌ Could not determine PR image from Dockerfile"
+            exit 2
+            fi
+
+            snyk container test "$IMAGE" \
             --file=Dockerfile \
-            --json-file-output=reports/pr/container.json
+            --org="$SNYK_ORG" \
+            --json-file-output=reports/pr/dockerfile.json
 
             SNYK_EXIT=$?
 
-            echo "Snyk Container PR exit code: $SNYK_EXIT"
+            echo "Snyk Dockerfile PR exit code: $SNYK_EXIT"
 
             # 0 = sin vulnerabilidades
             # 1 = vulnerabilidades encontradas
-            # 2/3 = error del scan
+            # 2/3 = error del análisis
+
             if [ "$SNYK_EXIT" -ge 2 ]; then
-            echo "❌ Snyk Container PR scan failed"
             exit "$SNYK_EXIT"
             fi
 
-            exit 0  
+            exit 0      
     
       # =========================================================
       # 17. Generar SBOM
@@ -285,8 +301,8 @@ jobs:
                   "reports/pr/iac.json"
               ),
               "Container": (
-                  "reports/baseline/container.json",
-                  "reports/pr/container.json"
+                  "reports/baseline/dockerfile.json",
+                  "reports/pr/dockerfile.json"
               )
           }
 
