@@ -544,12 +544,12 @@ jobs:
               f.write("## Security artifacts\n\n")
 
               f.write(
-                  "📦 **SBOM:** "
+                  " **SBOM:** "
                   "CycloneDX 1.6\n\n"
               )
 
               f.write(
-                  "📊 **Snyk Reports:** "
+                  " **Snyk Reports:** "
                   "Baseline vs PR scan reports\n\n"
               )
 
@@ -562,7 +562,7 @@ jobs:
 
               if total_new == 0:
 
-                  f.write("## ✅ RELEASE APPROVED\n\n")
+                  f.write("## RELEASE APPROVED\n\n")
 
                   f.write(
                       "No new Snyk findings were detected "
@@ -571,7 +571,7 @@ jobs:
 
               else:
 
-                  f.write("## ❌ RELEASE BLOCKED\n\n")
+                  f.write("## RELEASE BLOCKED\n\n")
 
                   f.write(
                       f"**{total_new} new Snyk finding(s)** "
